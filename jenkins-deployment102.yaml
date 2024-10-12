@@ -1,0 +1,81 @@
+# Redis Deployment and Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:latest  # Use the official Redis image
+          ports:
+            - containerPort: 6379  # Default Redis port
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-service
+spec:
+  type: ClusterIP  # Redis service to be accessed internally
+  selector:
+    app: redis
+  ports:
+    - protocol: TCP
+      port: 6379       # Service port for Redis
+      targetPort: 6379 # Container port for Redis
+
+---
+# Jenkins Deployment and Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jenkins-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: jenkins
+  template:
+    metadata:
+      labels:
+        app: jenkins
+    spec:
+      containers:
+        - name: jenkins
+          image: ltservices/jenkins:1.0.1  # Jenkins image to be used
+          ports:
+            - containerPort: 8080         # Jenkins web UI port
+            - containerPort: 50000        # Jenkins agent port
+          env:
+            - name: REDIS_HOST
+              value: "redis-service"  # Environment variable for Redis service hostname
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: jenkins-service
+spec:
+  type: NodePort  # Exposes the service on the node's IP
+  selector:
+    app: jenkins
+  ports:
+    - name: http  # Name for Jenkins web UI port
+      protocol: TCP
+      port: 8080       # Service port
+      targetPort: 8080 # Container port where Jenkins is running
+      nodePort: 32000  # Custom NodePort (32000–32767)
+    - name: agent  # Name for Jenkins agent port
+      protocol: TCP
+      port: 50000
+      targetPort: 50000
+      nodePort: 32001
